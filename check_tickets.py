@@ -71,36 +71,18 @@ async def check_tickets() -> list[str]:
                 items = found
                 break
 
-        if items:
-            # Print first 3 items to see the actual date format
-            for i, sample in enumerate(items[:3]):
-                sample_text = await sample.inner_text()
-                print(f"  SAMPLE {i+1}: {sample_text[:150]!r}")
+        # Dump raw page text to see actual structure and date format
+        full_text = await page.inner_text("body")
+        print("=== PAGE TEXT (first 5000 chars) ===")
+        print(full_text[:5000])
+        print("=== END ===")
 
-            for item in items:
-                try:
-                    text = await item.inner_text()
-                    if not DATE_PATTERN.search(text):
-                        continue
-                    lower = text.lower()
-                    if any(w in lower for w in SOLD_OUT_WORDS):
-                        print(f"  Sold out: {text[:80]!r}")
-                        continue
-                    available.append(text.strip()[:300])
-                    print(f"  Available: {text[:80]!r}")
-                except Exception as e:
-                    print(f"  Item error: {e}")
-        else:
-            # Fallback: scan raw page text line by line
-            print("No list items found — scanning raw text")
-            full_text = await page.inner_text("body")
-            print("Page excerpt:\n" + full_text[:3000])
-            lines = full_text.splitlines()
-            for i, line in enumerate(lines):
-                if DATE_PATTERN.search(line):
-                    ctx = "\n".join(lines[max(0, i - 2): i + 5])
-                    if not any(w in ctx.lower() for w in SOLD_OUT_WORDS):
-                        available.append(ctx.strip())
+        # Scan for any lines containing "May" or "mai" near our dates
+        lines = full_text.splitlines()
+        for i, line in enumerate(lines):
+            if re.search(r'\b(mai|may)\b', line, re.IGNORECASE):
+                ctx = "\n".join(lines[max(0, i - 1): i + 3])
+                print(f"DATE LINE: {ctx!r}")
 
         await browser.close()
         return available
