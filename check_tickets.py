@@ -17,7 +17,6 @@ async def send_telegram(message: str):
         resp = await client.post(api_url, json={
             "chat_id": CHAT_ID,
             "text": message,
-            "parse_mode": "HTML",
             "disable_web_page_preview": True,
         })
         resp.raise_for_status()
@@ -77,18 +76,12 @@ async def main():
         available = await check_tickets()
         if available:
             shows = "\n\n".join(f"• {s}" for s in available[:5])
-            msg = (
-                "🎭 <b>Билеты на Даму с камелиями!</b>\n\n"
-                f"Свободные даты 8–17 мая: <b>{len(available)}</b>\n\n"
-                f"{shows}\n\n"
-                f'🔗 <a href="{URL}">Купить билеты</a>'
-            )
+            msg = f"🎭 Билеты на Даму с камелиями!\n\nСвободные даты 8–17 мая: {len(available)}\n\n{shows}\n\n{URL}"
             await send_telegram(msg)
             print(f"✅ Alert sent — {len(available)} show(s) available")
         else:
             await send_telegram(
-                f"🔍 Проверила билеты на Даму с камелиями (8–17 мая) — пока всё распродано.\n\n"
-                f'🔗 <a href="{URL}">Страница спектакля</a>'
+                f"🔍 Проверила билеты на Даму с камелиями (8–17 мая) — пока всё распродано.\n\n{URL}"
             )
             print(f"❌ No tickets for May 8–17")
     except Exception as e:
