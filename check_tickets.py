@@ -85,32 +85,28 @@ async def check_tickets() -> list[str]:
         except Exception as e:
             print(f"Click error: {e}")
 
-        print(f"Current URL after click: {page.url}")
-
         # Get updated page content after interaction
         full_text = await page.inner_text("body")
-        print("=== PAGE TEXT AFTER CLICK (3000 chars) ===")
-        print(full_text[:3000])
-        print("=== END ===")
-
-        # Find the calendar block: look for lines around "May 8–17"
-        # Date format on site: "Tuesday 05 May 2026 at 19:30"
-        target_pattern = re.compile(
-            r'\b(0?[89]|1[0-7])\s+May\s+2026\b',
-            re.IGNORECASE
-        )
-
         lines = full_text.splitlines()
+
         available = []
-        for i, line in enumerate(lines):
-            if target_pattern.search(line):
-                # Grab context: date line + a few lines around it (status, book button)
-                ctx_lines = lines[max(0, i - 1): i + 6]
-                ctx = "\n".join(ctx_lines)
-                print(f"FOUND DATE BLOCK:\n{ctx}\n---")
-                lower = ctx.lower()
-                if not any(w in lower for w in SOLD_OUT_WORDS):
-                    available.append(ctx.strip()[:300])
+        i = 0
+        while i < len(lines):
+            stripped = lines[i].strip()
+            # Date format in calendar: standalone day number on its own line
+            if re.match(r'^(0?[89]|1[0-7])$', stripped):
+                # Confirm it's a May date by checking next ~5 lines
+                lookahead = " ".join(lines[i:i+6])
+                if "May" not in lookahead:
+                    i += 1
+                    continue
+                # Grab the full block for this performance (~15 lines)
+                block_lines = lines[i:i+15]
+                block = "\n".join(block_lines)
+                print(f"DATE {stripped} May → {block[:120]!r}")
+                if "sold out" not in block.lower():
+                    available.append(block.strip()[:300])
+            i += 1
 
         await browser.close()
         return available
