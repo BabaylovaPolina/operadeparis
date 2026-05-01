@@ -71,18 +71,41 @@ async def check_tickets() -> list[str]:
                 items = found
                 break
 
-        # Dump raw page text to see actual structure and date format
-        full_text = await page.inner_text("body")
-        print("=== PAGE TEXT (first 5000 chars) ===")
-        print(full_text[:5000])
-        print("=== END ===")
+        # Click "SEE AVAILABILITY" to expand the calendar
+        try:
+            btn = await page.query_selector("a:has-text('SEE AVAILABILITY'), button:has-text('SEE AVAILABILITY')")
+            if btn:
+                await btn.click()
+                await page.wait_for_timeout(4000)
+                print("Clicked SEE AVAILABILITY")
+            else:
+                print("SEE AVAILABILITY button not found, trying #calendar scroll")
+                await page.evaluate("const el = document.querySelector('#calendar'); if(el) el.scrollIntoView()")
+                await page.wait_for_timeout(3000)
+        except Exception as e:
+            print(f"Click error: {e}")
 
-        # Scan for any lines containing "May" or "mai" near our dates
+        # Get updated page content after interaction
+        full_text = await page.inner_text("body")
+
+        # Find the calendar block: look for lines around "May 8–17"
+        # Date format on site: "Tuesday 05 May 2026 at 19:30"
+        target_pattern = re.compile(
+            r'\b(0?[89]|1[0-7])\s+May\s+2026\b',
+            re.IGNORECASE
+        )
+
         lines = full_text.splitlines()
+        available = []
         for i, line in enumerate(lines):
-            if re.search(r'\b(mai|may)\b', line, re.IGNORECASE):
-                ctx = "\n".join(lines[max(0, i - 1): i + 3])
-                print(f"DATE LINE: {ctx!r}")
+            if target_pattern.search(line):
+                # Grab context: date line + a few lines around it (status, book button)
+                ctx_lines = lines[max(0, i - 1): i + 6]
+                ctx = "\n".join(ctx_lines)
+                print(f"FOUND DATE BLOCK:\n{ctx}\n---")
+                lower = ctx.lower()
+                if not any(w in lower for w in SOLD_OUT_WORDS):
+                    available.append(ctx.strip()[:300])
 
         await browser.close()
         return available
