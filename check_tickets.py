@@ -85,8 +85,13 @@ async def check_tickets() -> list[str]:
         except Exception as e:
             print(f"Click error: {e}")
 
+        print(f"Current URL after click: {page.url}")
+
         # Get updated page content after interaction
         full_text = await page.inner_text("body")
+        print("=== PAGE TEXT AFTER CLICK (3000 chars) ===")
+        print(full_text[:3000])
+        print("=== END ===")
 
         # Find the calendar block: look for lines around "May 8–17"
         # Date format on site: "Tuesday 05 May 2026 at 19:30"
