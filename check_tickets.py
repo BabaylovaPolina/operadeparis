@@ -72,6 +72,11 @@ async def check_tickets() -> list[str]:
                 break
 
         if items:
+            # Print first 3 items to see the actual date format
+            for i, sample in enumerate(items[:3]):
+                sample_text = await sample.inner_text()
+                print(f"  SAMPLE {i+1}: {sample_text[:150]!r}")
+
             for item in items:
                 try:
                     text = await item.inner_text()
