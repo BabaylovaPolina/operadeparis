@@ -1,9 +1,9 @@
 name: Opera Garnier – Ticket Alert
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'   # every 10 minutes
-  workflow_dispatch:           # manual run button in GitHub UI
+  workflow_dispatch:       # manual run button in GitHub UI
+  repository_dispatch:     # triggered by cron-job.org via GitHub API
+    types: [check-tickets]
 
 jobs:
   check-tickets:
