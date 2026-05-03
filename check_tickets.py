@@ -55,6 +55,11 @@ async def check_show(page, show: dict) -> list[str]:
 
     lines = (await page.inner_text("body")).splitlines()
 
+    if show["name"] == "Русалка":
+        print("=== RUSALKA PAGE (2000 chars) ===")
+        print("\n".join(lines)[:2000])
+        print("=== END ===")
+
     available = []
     for i, line in enumerate(lines):
         if not re.match(show["days"], line.strip()):
@@ -63,6 +68,7 @@ async def check_show(page, show: dict) -> list[str]:
         if "May" not in lookahead:
             continue
         block = "\n".join(lines[i:i + 15])
+        print(f"[{show['name']}] DATE {line.strip()} May → {block[:120]!r}")
         if "sold out" not in block.lower():
             available.append(line.strip())
 
