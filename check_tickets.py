@@ -45,7 +45,10 @@ async def check_show(page, show: dict) -> list[str]:
     await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
     await page.wait_for_timeout(2000)
 
-    btn = await page.query_selector("a:has-text('SEE AVAILABILITY'), button:has-text('SEE AVAILABILITY')")
+    btn = await page.query_selector(
+        "a:has-text('SEE AVAILABILITY'), button:has-text('SEE AVAILABILITY'),"
+        "a:has-text('VIEW PRICES AND BOOK'), button:has-text('VIEW PRICES AND BOOK')"
+    )
     if btn:
         await btn.click()
         await page.wait_for_timeout(4000)
@@ -55,11 +58,6 @@ async def check_show(page, show: dict) -> list[str]:
 
     lines = (await page.inner_text("body")).splitlines()
 
-    if show["name"] == "Русалка":
-        print("=== RUSALKA PAGE (2000 chars) ===")
-        print("\n".join(lines)[:2000])
-        print("=== END ===")
-
     available = []
     for i, line in enumerate(lines):
         if not re.match(show["days"], line.strip()):
@@ -68,7 +66,6 @@ async def check_show(page, show: dict) -> list[str]:
         if "May" not in lookahead:
             continue
         block = "\n".join(lines[i:i + 15])
-        print(f"[{show['name']}] DATE {line.strip()} May → {block[:120]!r}")
         if "sold out" not in block.lower():
             available.append(line.strip())
 
