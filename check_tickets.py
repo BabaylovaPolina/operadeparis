@@ -58,6 +58,7 @@ async def check_show(page, show: dict) -> list[str]:
         block_lines = lines[i:i + 25]
         block = "\n".join(block_lines)
         if "sold out" not in block.lower():
+            print(f"AVAILABLE BLOCK for {line.strip()} May:\n{block}\n---")
             # Extract available categories with prices
             cats = re.findall(r'(Optima|Cat\.\s*\d+)\s*\n\s*(\d+)\s*€', block)
             cat_str = ", ".join(f"{c} ({p}€)" for c, p in cats) if cats else "категории уточняются"
