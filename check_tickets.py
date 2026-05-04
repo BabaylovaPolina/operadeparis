@@ -55,9 +55,13 @@ async def check_show(page, show: dict) -> list[str]:
         lookahead = " ".join(lines[i:i + 6])
         if "May" not in lookahead:
             continue
-        block = "\n".join(lines[i:i + 15])
+        block_lines = lines[i:i + 25]
+        block = "\n".join(block_lines)
         if "sold out" not in block.lower():
-            available.append(line.strip())
+            # Extract available categories with prices
+            cats = re.findall(r'(Optima|Cat\.\s*\d+)\s*\n\s*(\d+)\s*€', block)
+            cat_str = ", ".join(f"{c} ({p}€)" for c, p in cats) if cats else "категории уточняются"
+            available.append((line.strip(), cat_str))
 
     return available
 
@@ -82,7 +86,7 @@ async def main():
             for show in SHOWS:
                 available = await check_show(page, show)
                 results[show["name"]] = (available, show["url"])
-                print(f"{show['name']}: {available or 'sold out'}")
+                print(f"{show['name']}: {[(d, c) for d, c in available] if available else 'sold out'}")
 
             await browser.close()
 
@@ -91,8 +95,8 @@ async def main():
         for name, (available, url) in results.items():
             if available:
                 any_available = True
-                dates = ", ".join(f"{d} мая" for d in available)
-                lines.append(f"🎭 {name} — свободны: {dates}\n{url}")
+                dates_str = "\n".join(f"  {d} мая — {cats}" for d, cats in available)
+                lines.append(f"🎭 {name} — есть билеты!\n{dates_str}\n{url}")
             else:
                 lines.append(f"🔍 {name} — всё распродано")
 
