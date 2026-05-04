@@ -15,16 +15,6 @@ SHOWS = [
         "url": "https://www.operadeparis.fr/en/season-25-26/ballet/la-dame-aux-camelias",
         "days": r'^(0?[89]|1[0-7])$',  # May 8–17
     },
-    {
-        "name": "Ромео и Джульетта",
-        "url": "https://www.operadeparis.fr/en/season-25-26/ballet/romeo-and-juliet",
-        "days": r'^(0?[89]|1[012])$',  # May 8–12
-    },
-    {
-        "name": "Русалка",
-        "url": "https://www.operadeparis.fr/en/season-25-26/opera/rusalka",
-        "days": r'^(0?[89]|1[0-7])$',  # May 8–17
-    },
 ]
 
 
