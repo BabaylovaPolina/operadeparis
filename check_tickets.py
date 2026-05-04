@@ -58,11 +58,18 @@ async def check_show(page, show: dict) -> list[str]:
         block_lines = lines[i:i + 25]
         block = "\n".join(block_lines)
         if "sold out" not in block.lower():
-            print(f"AVAILABLE BLOCK for {line.strip()} May:\n{block}\n---")
-            # Extract available categories with prices
-            cats = re.findall(r'(Optima|Cat\.\s*\d+)\s*\n\s*(\d+)\s*€', block)
-            cat_str = ", ".join(f"{c} ({p}€)" for c, p in cats) if cats else "категории уточняются"
-            available.append((line.strip(), cat_str))
+            print(f"=== HTML around {line.strip()} May ===")
+            # Find the element containing this date and print its HTML
+            els = await page.query_selector_all("[class*='session'], [class*='calendar'], [class*='performance'], [class*='date']")
+            for el in els:
+                el_text = await el.inner_text()
+                if f"\n{line.strip()}\n" in f"\n{el_text}\n" and "May" in el_text:
+                    html = await el.inner_html()
+                    print(html[:3000])
+                    break
+            print("=== END ===")
+            status = "последние места" if "last seats" in block.lower() else "есть билеты"
+            available.append((line.strip(), status))
 
     return available
 
