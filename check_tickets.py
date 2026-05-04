@@ -58,15 +58,18 @@ async def check_show(page, show: dict) -> list[str]:
         block_lines = lines[i:i + 25]
         block = "\n".join(block_lines)
 
-        # Print HTML for first date to understand category structure
+        # Print HTML of first performance item to understand category structure
         if line.strip() == "08":
             print(f"=== HTML for 08 May (structure sample) ===")
-            els = await page.query_selector_all("[class*='session'], [class*='performance'], li[class*='item']")
-            for el in els:
-                el_text = await el.inner_text()
-                if "08" in el_text and "May" in el_text and "7:30" in el_text:
-                    print((await el.inner_html())[:3000])
-                    break
+            perf_items = await page.query_selector_all("[class*='performances__item'], [class*='performances__event'], [class*='performances__row'], [class*='performances__date']")
+            if perf_items:
+                print(f"Found {len(perf_items)} items with performances selector")
+                print((await perf_items[0].inner_html())[:4000])
+            else:
+                # Fallback: get the body section
+                body_section = await page.query_selector(".component-performances__section--body")
+                if body_section:
+                    print((await body_section.inner_html())[:4000])
             print("=== END ===")
 
         if "sold out" not in block.lower():
