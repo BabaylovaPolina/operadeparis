@@ -57,17 +57,19 @@ async def check_show(page, show: dict) -> list[str]:
             continue
         block_lines = lines[i:i + 25]
         block = "\n".join(block_lines)
-        if "sold out" not in block.lower():
-            print(f"=== HTML around {line.strip()} May ===")
-            # Find the element containing this date and print its HTML
-            els = await page.query_selector_all("[class*='session'], [class*='calendar'], [class*='performance'], [class*='date']")
+
+        # Print HTML for first date to understand category structure
+        if line.strip() == "08":
+            print(f"=== HTML for 08 May (structure sample) ===")
+            els = await page.query_selector_all("[class*='session'], [class*='performance'], li[class*='item']")
             for el in els:
                 el_text = await el.inner_text()
-                if f"\n{line.strip()}\n" in f"\n{el_text}\n" and "May" in el_text:
-                    html = await el.inner_html()
-                    print(html[:3000])
+                if "08" in el_text and "May" in el_text and "7:30" in el_text:
+                    print((await el.inner_html())[:3000])
                     break
             print("=== END ===")
+
+        if "sold out" not in block.lower():
             status = "последние места" if "last seats" in block.lower() else "есть билеты"
             available.append((line.strip(), status))
 
