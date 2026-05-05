@@ -29,7 +29,7 @@ async def send_telegram(message: str):
         resp.raise_for_status()
 
 
-async def check_show(page, show: dict) -> list[str]:
+async def check_show(page, show: dict) -> list[tuple[str, str]]:
     await page.goto(show["url"], wait_until="networkidle", timeout=60000)
     await page.wait_for_timeout(3000)
     await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
@@ -46,35 +46,50 @@ async def check_show(page, show: dict) -> list[str]:
         await page.evaluate("const el = document.querySelector('#calendar'); if(el) el.scrollIntoView()")
         await page.wait_for_timeout(3000)
 
-    lines = (await page.inner_text("body")).splitlines()
-
+    rows = await page.query_selector_all("[class*='performances__row']")
     available = []
-    for i, line in enumerate(lines):
-        if not re.match(show["days"], line.strip()):
-            continue
-        lookahead = " ".join(lines[i:i + 6])
-        if "May" not in lookahead:
-            continue
-        block_lines = lines[i:i + 25]
-        block = "\n".join(block_lines)
 
-        # Print HTML of first performance item to understand category structure
-        if line.strip() == "08":
-            print(f"=== HTML for 08 May (structure sample) ===")
-            perf_items = await page.query_selector_all("[class*='performances__item'], [class*='performances__event'], [class*='performances__row'], [class*='performances__date']")
-            if perf_items:
-                print(f"Found {len(perf_items)} items with performances selector")
-                print((await perf_items[0].inner_html())[:4000])
-            else:
-                # Fallback: get the body section
-                body_section = await page.query_selector(".component-performances__section--body")
-                if body_section:
-                    print((await body_section.inner_html())[:4000])
-            print("=== END ===")
+    for row in rows:
+        # Get day number
+        day_el = await row.query_selector("[class*='performances__date-left'] span")
+        if not day_el:
+            continue
+        day = (await day_el.inner_text()).strip()
+        if not re.match(show["days"], day):
+            continue
 
-        if "sold out" not in block.lower():
-            status = "последние места" if "last seats" in block.lower() else "есть билеты"
-            available.append((line.strip(), status))
+        # Confirm it's May
+        month_els = await row.query_selector_all("[class*='performances__date-right'] span")
+        months = [await el.inner_text() for el in month_els]
+        if "May" not in " ".join(months):
+            continue
+
+        # Find available categories: li WITHOUT --disabled class
+        avail_cats = await row.query_selector_all(
+            ".component-performances__categories-li:not(.component-performances__categories-li--disabled)"
+        )
+        if not avail_cats:
+            continue
+
+        cats = []
+        for cat in avail_cats:
+            title_el = await cat.query_selector(".component-performances__categories-li-title")
+            price_el = await cat.query_selector(".price")
+            if title_el and price_el:
+                title = (await title_el.inner_text()).strip()
+                price = (await price_el.inner_text()).strip()
+                cats.append(f"{title} ({price})")
+
+        # Check status tag (Last seats, etc.)
+        status = "есть билеты"
+        tag_els = await row.query_selector_all("[class*='performances__tags-li']")
+        for tag_el in tag_els:
+            tag_text = (await tag_el.inner_text()).strip().lower()
+            if "last" in tag_text:
+                status = "последние места"
+
+        cat_str = ", ".join(cats) if cats else "уточняется"
+        available.append((day, f"{status} — {cat_str}"))
 
     return available
 
@@ -99,23 +114,20 @@ async def main():
             for show in SHOWS:
                 available = await check_show(page, show)
                 results[show["name"]] = (available, show["url"])
-                print(f"{show['name']}: {[(d, c) for d, c in available] if available else 'sold out'}")
+                print(f"{show['name']}: {available or 'sold out'}")
 
             await browser.close()
 
-        lines = []
-        any_available = False
+        msg_lines = []
         for name, (available, url) in results.items():
             if available:
-                any_available = True
-                dates_str = "\n".join(f"  {d} мая — {cats}" for d, cats in available)
-                lines.append(f"🎭 {name} — есть билеты!\n{dates_str}\n{url}")
+                dates_str = "\n".join(f"  {d} мая — {info}" for d, info in available)
+                msg_lines.append(f"🎭 {name} — есть билеты!\n{dates_str}\n{url}")
             else:
-                lines.append(f"🔍 {name} — всё распродано")
+                msg_lines.append(f"🔍 {name} — всё распродано")
 
-        msg = "\n\n".join(lines)
-        await send_telegram(msg)
-        print(f"✅ Alert sent")
+        await send_telegram("\n\n".join(msg_lines))
+        print("✅ Alert sent")
 
     except Exception as e:
         print(f"ERROR: {e}")
